@@ -7,7 +7,9 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 
+
 from ultralytics.nn.modules import (
+    ImgBlob,                            #New Entry             
     AIFI,
     C1,
     C2,
@@ -246,11 +248,19 @@ class BaseModel(nn.Module):
             (BaseModel): An updated BaseModel object.
         """
         self = super()._apply(fn)
-        m = self.model[-1]  # Detect()
-        if isinstance(m, Detect):  # includes all Detect subclasses like Segment, Pose, OBB, WorldDetect
-            m.stride = fn(m.stride)
-            m.anchors = fn(m.anchors)
-            m.strides = fn(m.strides)
+        # m = self.model[-1]  # Detect()
+        # if isinstance(m, Detect):  # includes all Detect subclasses like Segment, Pose, OBB, WorldDetect
+        #     m.stride = fn(m.stride)
+        #     m.anchors = fn(m.anchors)
+        #     m.strides = fn(m.strides)
+
+        #New Entry
+        for m in self.model:
+            if isinstance(m, Detect):  # includes all Detect subclasses like Segment, Pose, OBB, WorldDetect
+                m.stride = fn(m.stride)
+                m.anchors = fn(m.anchors)
+                m.strides = fn(m.strides)
+
         return self
 
     def load(self, weights, verbose=True):
@@ -311,23 +321,42 @@ class DetectionModel(BaseModel):
         self.inplace = self.yaml.get("inplace", True)
         self.end2end = getattr(self.model[-1], "end2end", False)
 
+        # # Build strides
+        # m = self.model[-1]  # Detect()
+        # if isinstance(m, Detect):  # includes all Detect subclasses like Segment, Pose, OBB, WorldDetect
+        #     s = 256  # 2x min stride
+        #     m.inplace = self.inplace
+
+        #     def _forward(x):
+        #         """Performs a forward pass through the model, handling different Detect subclass types accordingly."""
+        #         if self.end2end:
+        #             return self.forward(x)["one2many"]
+        #         return self.forward(x)[0] if isinstance(m, (Segment, Pose, OBB)) else self.forward(x)
+
+        #     m.stride = torch.tensor([s / x.shape[-2] for x in _forward(torch.zeros(1, ch, s, s))])  # forward
+        #     self.stride = m.stride
+        #     m.bias_init()  # only run once
+        # else:
+        #     self.stride = torch.Tensor([32])  # default stride for i.e. RTDETR
+
         # Build strides
-        m = self.model[-1]  # Detect()
-        if isinstance(m, Detect):  # includes all Detect subclasses like Segment, Pose, OBB, WorldDetect
-            s = 256  # 2x min stride
-            m.inplace = self.inplace
+        last_m = len(self.model) - 1
+        for i, m in enumerate(self.model):
+            if isinstance(m, Detect):  # includes all Detect subclasses like Segment, Pose, OBB, WorldDetect
+                s = 256  # 2x min stride
+                m.inplace = self.inplace
 
-            def _forward(x):
-                """Performs a forward pass through the model, handling different Detect subclass types accordingly."""
-                if self.end2end:
-                    return self.forward(x)["one2many"]
-                return self.forward(x)[0] if isinstance(m, (Segment, Pose, OBB)) else self.forward(x)
+                def _forward(x):
+                    """Performs a forward pass through the model, handling different Detect subclass types accordingly."""
+                    if self.end2end:
+                        return self.forward(x)["one2many"]
+                    return self.forward(x)[0] if isinstance(m, (Segment, Pose, OBB)) else self.forward(x)
 
-            m.stride = torch.tensor([s / x.shape[-2] for x in _forward(torch.zeros(1, ch, s, s))])  # forward
-            self.stride = m.stride
-            m.bias_init()  # only run once
-        else:
-            self.stride = torch.Tensor([32])  # default stride for i.e. RTDETR
+                m.stride = torch.tensor([s / x.shape[-2] for x in _forward(torch.zeros(1, ch, s, s))])  # forward
+                self.stride = m.stride
+                m.bias_init()  # only run once
+            elif i == last_m:
+                self.stride = torch.Tensor([32])  # default stride for i.e. RTDETR
 
         # Init weights, biases
         initialize_weights(self)
@@ -909,6 +938,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
 
         n = n_ = max(round(n * depth), 1) if n > 1 else n  # depth gain
         if m in {
+            ImgBlob,             #New Entry
             Classify,
             Conv,
             ConvTranspose,

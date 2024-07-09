@@ -21,6 +21,7 @@ __all__ = (
     "CBAM",
     "Concat",
     "RepConv",
+    "ImgBlob"               #New Entry
 )
 
 
@@ -32,6 +33,18 @@ def autopad(k, p=None, d=1):  # kernel, padding, dilation
         p = k // 2 if isinstance(k, int) else [x // 2 for x in k]  # auto-pad
     return p
 
+class ImgBlob(nn.Module):
+
+    def __init__(self):
+        super().__init__()
+
+        self.conv1 = nn.Conv2d(in_channels = 3, out_channels = 5, kernel_size = 3, stride = 1)
+        self.conv2 = nn.Conv2d(in_channels = 5, out_channels= 3, kernel_size = 3, stride = 1)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        return(x)
 
 class Conv(nn.Module):
     """Standard convolution with args(ch_in, ch_out, kernel, stride, padding, groups, dilation, activation)."""
