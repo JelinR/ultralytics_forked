@@ -35,11 +35,11 @@ def autopad(k, p=None, d=1):  # kernel, padding, dilation
 
 class ImgBlob(nn.Module):
 
-    def __init__(self):
+    def __init__(self, c_in, c_mid, k=3, s=1, p=None, d=1):
         super().__init__()
 
-        self.conv1 = nn.Conv2d(in_channels = 3, out_channels = 5, kernel_size = 3, stride = 1)
-        self.conv2 = nn.Conv2d(in_channels = 5, out_channels= 3, kernel_size = 3, stride = 1)
+        self.conv1 = nn.Conv2d(c_in, c_mid, k, s, autopad(k, p, d), dilation = d, bias = False)
+        self.conv2 = nn.Conv2d(c_mid, c_in, k, s, autopad(k, p, d), dilation = d, bias = False)
 
     def forward(self, x):
         x = self.conv1(x)
