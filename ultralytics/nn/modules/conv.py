@@ -6,6 +6,7 @@ import math
 import numpy as np
 import torch
 import torch.nn as nn
+import cv2
 
 __all__ = (
     "Conv",
