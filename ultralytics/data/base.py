@@ -167,7 +167,48 @@ class BaseDataset(Dataset):
                 cv2.circle(im, (i[0], i[1]), i[2], (0, 255, 0), 1)
         
         return(im)
+    
+
+    def label_SimpleBlobs(self, im):
+        # Set up the SimpleBlobDetector with default parameters
+        params = cv2.SimpleBlobDetector_Params()
+
+        # Change thresholds
+        params.minThreshold = 0
+        params.maxThreshold = 255
+
+        # Filter by Area.
+        params.filterByArea = True
+        params.minArea = 10
+
+        # Filter by Circularity
+        params.filterByCircularity = True
+        params.minCircularity = 0.34
+
+        # Filter by Convexity
+        params.filterByConvexity = True
+        params.minConvexity = 0.87
+
+        # Filter by Inertia
+        params.filterByInertia = True
+        params.minInertiaRatio = 0.01
+
+        # Create a detector with the parameters
+        detector = cv2.SimpleBlobDetector_create(params)
+
+        # Convert to grayscale
+        #gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        # Detect blobs 
+        keypoints = detector.detect(im)
+
+        # Draw detected blobs as red circles
+        # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures the size of the circle corresponds to the size of blob
+        im_with_keypoints = cv2.drawKeypoints(im, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+        return(im_with_keypoints)
     #--------------------------
+
 
     def load_image(self, i, rect_mode=True):
         """Loads 1 image from dataset index 'i', returns (im, resized hw)."""
@@ -188,7 +229,7 @@ class BaseDataset(Dataset):
 
             #------------------------- New Entry
 
-            im = self.label_blobs(im)
+            im = self.label_SimpleBlobs(im)
 
             #------------------------
 
@@ -214,7 +255,7 @@ class BaseDataset(Dataset):
         
         #------------------------- New Entry
 
-        im = self.label_blobs(im)
+        im = self.label_SimpleBlobs(im)
 
         #------------------------
 
