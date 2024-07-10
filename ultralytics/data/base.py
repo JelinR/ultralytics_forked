@@ -179,11 +179,12 @@ class BaseDataset(Dataset):
 
         # Filter by Area.
         params.filterByArea = True
-        params.minArea = 10
+        params.minArea = 15
+        params.maxArea = 500
 
         # Filter by Circularity
         params.filterByCircularity = True
-        params.minCircularity = 0.34
+        params.minCircularity = 0.53
 
         # Filter by Convexity
         params.filterByConvexity = True
