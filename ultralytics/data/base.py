@@ -141,6 +141,36 @@ class BaseDataset(Dataset):
             if self.single_cls:
                 self.labels[i]["cls"][:, 0] = 0
 
+    #-------------------------- New Entry
+    def label_blobs(self, im):
+
+        im_gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+        im_gray_blur = cv2.GaussianBlur(im_gray, (9, 9), 2)
+
+        # Use the Hough Circle Transform to detect circles
+        circles = cv2.HoughCircles(
+            im_gray_blur, 
+            cv2.HOUGH_GRADIENT, 
+            dp=1.5, 
+            minDist=30,
+            param1=20,
+            param2=50,
+            minRadius=50,
+            maxRadius=150
+        )
+
+        # If some circles are detected, let's highlight them
+        if circles is not None:
+            circles = np.uint16(np.around(circles))
+            for i in circles[0, :]:
+                # Draw the outer circle
+                cv2.circle(im, (i[0], i[1]), i[2], (0, 255, 0), 2)
+                # Draw the center of the circle
+                cv2.circle(im, (i[0], i[1]), 2, (0, 0, 255), 3)
+        
+        return(im)
+    #--------------------------
+
     def load_image(self, i, rect_mode=True):
         """Loads 1 image from dataset index 'i', returns (im, resized hw)."""
         im, f, fn = self.ims[i], self.im_files[i], self.npy_files[i]
@@ -156,6 +186,13 @@ class BaseDataset(Dataset):
                 im = cv2.imread(f)  # BGR
             if im is None:
                 raise FileNotFoundError(f"Image Not Found {f}")
+            
+
+            #------------------------- New Entry
+
+            im = self.label_blobs(im)
+
+            #------------------------
 
             h0, w0 = im.shape[:2]  # orig hw
             if rect_mode:  # resize long side to imgsz while maintaining aspect ratio
@@ -176,6 +213,12 @@ class BaseDataset(Dataset):
                         self.ims[j], self.im_hw0[j], self.im_hw[j] = None, None, None
 
             return im, (h0, w0), im.shape[:2]
+        
+        #------------------------- New Entry
+
+        im = self.label_blobs(im)
+
+        #------------------------
 
         return self.ims[i], self.im_hw0[i], self.im_hw[i]
 
