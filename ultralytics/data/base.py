@@ -142,72 +142,97 @@ class BaseDataset(Dataset):
                 self.labels[i]["cls"][:, 0] = 0
 
     #-------------------------- New Entry
-    def label_blobs(self, im):
-
-        im_gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-        im_gray_blur = cv2.GaussianBlur(im_gray, (9, 9), 2)
-
-        # Use the Hough Circle Transform to detect circles
-        circles = cv2.HoughCircles(
-            im_gray_blur, 
-            cv2.HOUGH_GRADIENT, 
-            dp=1.5, 
-            minDist=100,
-            param1=50,
-            param2=30,
-            minRadius=20,
-            maxRadius=40
-        )
-
-        # If some circles are detected, let's highlight them
-        if circles is not None:
-            circles = np.uint16(np.around(circles))
-            for i in circles[0, :]:
-                # Draw the outer circle
-                cv2.circle(im, (i[0], i[1]), i[2], (0, 255, 0), 1)
-        
-        return(im)
     
+    def detect_blobs(self, image):
 
-    def label_SimpleBlobs(self, im):
-        # Set up the SimpleBlobDetector with default parameters
+        #Convert image to grayscale
+        gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        # Set up SimpleBlobDetector parameters
         params = cv2.SimpleBlobDetector_Params()
+
+        ##Define Parameters
 
         # Change thresholds
         params.minThreshold = 0
         params.maxThreshold = 255
 
         # Filter by Area.
-        params.filterByArea = True
-        params.minArea = 15
-        params.maxArea = 500
+        params.filterByArea = True          #A minimal bound is set so sharpening has an effect
+        params.minArea = 200
 
         # Filter by Circularity
         params.filterByCircularity = True
-        params.minCircularity = 0.53
+        params.minCircularity = 0.4             #0.78 is square, greater than 0.8 tends to circle
+        #params.maxCircularity = 1
 
         # Filter by Convexity
-        params.filterByConvexity = True
-        params.minConvexity = 0.87
+        params.filterByConvexity = False        #Faces are detected as concave too, so set to False
+        #params.minConvexity = 0.1
+        #params.maxConvexity = 1
 
         # Filter by Inertia
-        params.filterByInertia = True
+        params.filterByInertia = True           #A minimal bound is set to avoid detecting lines
         params.minInertiaRatio = 0.01
 
         # Create a detector with the parameters
         detector = cv2.SimpleBlobDetector_create(params)
 
-        # Convert to grayscale
-        #gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # Detect blobs
+        keypoints = detector.detect(gray_img)
 
-        # Detect blobs 
-        keypoints = detector.detect(im)
+        # Create an empty mask
+        mask = np.zeros_like(gray_img)
 
-        # Draw detected blobs as red circles
-        # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures the size of the circle corresponds to the size of blob
-        im_with_keypoints = cv2.drawKeypoints(im, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        # Draw blobs on the mask
+        for keypoint in keypoints:
+            x, y = np.int64(keypoint.pt)
+            r = np.int64(keypoint.size // 2)
+            cv2.circle(mask, (x, y), r, (255), -1)
+        
+        return(mask)
+    
+    
+    def inject_sharp_blobs(self, image):
 
-        return(im_with_keypoints)
+        #Obtain blobs
+        mask = self.detect_blobs(image)
+
+        # Sharpen the sample_img using unsharp masking
+        blurred = cv2.GaussianBlur(image, (15, 15), 7)
+        sharpened = cv2.addWeighted(image, 3.5, blurred, -2.5, 0)
+
+
+        # Split the sharpened image into three color channels
+        # These are then used for obtaining sharp blobs
+        sharpened_b, sharpened_g, sharpened_r = cv2.split(sharpened)
+
+        # Apply bitwise operations to each color channel, get sharp blobs
+        sharp_blobs_b = cv2.bitwise_and(sharpened_b, sharpened_b, mask=mask)
+        sharp_blobs_g = cv2.bitwise_and(sharpened_g, sharpened_g, mask=mask)
+        sharp_blobs_r = cv2.bitwise_and(sharpened_r, sharpened_r, mask=mask)
+
+
+        #Split original image into three color channels
+        image_b, image_g, image_r = cv2.split(image)
+
+        #Regions with sharp blobs are blacked out
+        non_sharp_regions_b = cv2.bitwise_and(image_b, image_b, mask=cv2.bitwise_not(mask))
+        non_sharp_regions_g = cv2.bitwise_and(image_g, image_g, mask=cv2.bitwise_not(mask))
+        non_sharp_regions_r = cv2.bitwise_and(image_r, image_r, mask=cv2.bitwise_not(mask))
+
+
+        # Combine the sharpened blobs with the non-sharpened regions
+        result_b = cv2.add(sharp_blobs_b, non_sharp_regions_b)
+        result_g = cv2.add(sharp_blobs_g, non_sharp_regions_g)
+        result_r = cv2.add(sharp_blobs_r, non_sharp_regions_r)
+
+        # Merge the color channels back into one image
+        result = cv2.merge((result_b, result_g, result_r))
+
+        return(result)
+        
+
     #--------------------------
 
 
@@ -230,7 +255,7 @@ class BaseDataset(Dataset):
 
             #------------------------- New Entry
 
-            im = self.label_SimpleBlobs(im)
+            im = self.inject_sharp_blobs(im)
 
             #------------------------
 
@@ -256,7 +281,7 @@ class BaseDataset(Dataset):
         
         #------------------------- New Entry
 
-        im = self.label_SimpleBlobs(im)
+        im = self.inject_sharp_blobs(im)
 
         #------------------------
 
