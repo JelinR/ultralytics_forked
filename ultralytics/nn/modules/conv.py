@@ -34,6 +34,7 @@ def autopad(k, p=None, d=1):  # kernel, padding, dilation
         p = k // 2 if isinstance(k, int) else [x // 2 for x in k]  # auto-pad
     return p
 
+#--------------- New Entry
 class ImgBlob(nn.Module):
 
     def __init__(self, c_in, c_mid, k=3, s=1, p=None, d=1):
@@ -46,6 +47,8 @@ class ImgBlob(nn.Module):
         x = self.conv1(x)
         x = self.conv2(x)
         return(x)
+    
+#----------------------
 
 class Conv(nn.Module):
     """Standard convolution with args(ch_in, ch_out, kernel, stride, padding, groups, dilation, activation)."""
