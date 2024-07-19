@@ -141,7 +141,7 @@ class BaseDataset(Dataset):
             if self.single_cls:
                 self.labels[i]["cls"][:, 0] = 0
 
-    #-------------------------- New Entry
+    #New Entry --------------------------
     
     def detect_blobs(self, image):
 
@@ -262,11 +262,11 @@ class BaseDataset(Dataset):
                 im = cv2.resize(im, (self.imgsz, self.imgsz), interpolation=cv2.INTER_LINEAR)
 
 
-            # #------------------------- New Entry
+            #New Entry-------------------------
 
-            # im = self.inject_sharp_blobs(im)
+            im = self.inject_sharp_blobs(im)
 
-            # #------------------------
+            #------------------------
 
             # Add to buffer if training with augmentations
             if self.augment:
@@ -279,11 +279,11 @@ class BaseDataset(Dataset):
 
             return im, (h0, w0), im.shape[:2]
         
-        # #------------------------- New Entry
+        #New Entry-------------------------
 
-        # im = self.inject_sharp_blobs(im)
+        im = self.inject_sharp_blobs(im)
 
-        # #------------------------
+        #------------------------
 
         return self.ims[i], self.im_hw0[i], self.im_hw[i]
 
